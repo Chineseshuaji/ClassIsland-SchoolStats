@@ -9,7 +9,11 @@ using ClassIsland.Shared;
 
 namespace ClassIsland.SchoolStats.Views.SettingsPages;
 
-[SettingsPageInfo("classisland.schoolstats.settings", "在校时间统计", "fa-solid fa-graduation-cap", "配置学期起止日期、自定义假期与补班日")]
+[SettingsPageInfo(
+    id: "classisland.schoolstats.settings",
+    name: "在校时间统计",
+    iconSource: "fa-solid fa-graduation-cap",
+    description: "配置学期起止日期、自定义假期与补班日")]
 [Group("classisland.schoolstats")]
 public partial class SchoolStatsSettingsPage : SettingsPageBase
 {
@@ -32,11 +36,45 @@ public partial class SchoolStatsSettingsPage : SettingsPageBase
         _statsService = IAppHost.GetService<IStatisticsService>();
         LoadConfig();
 
-        StartDatePicker.SelectedDateChanged += (_, _) => { if (_config != null && StartDatePicker.SelectedDate.HasValue) { _config.StartDate = StartDatePicker.SelectedDate.Value.DateTime; InvalidateAndRefresh(); } };
-        EndDatePicker.SelectedDateChanged += (_, _) => { if (_config != null && EndDatePicker.SelectedDate.HasValue) { _config.EndDate = EndDatePicker.SelectedDate.Value.DateTime; InvalidateAndRefresh(); } };
-        DailyHoursSpinner.ValueChanged += (_, _) => { if (_config != null) _config.DailyHours = DailyHoursSpinner.Value; };
-        ExcludeWeekendsCheck.IsCheckedChanged += (_, _) => { if (_config != null) { _config.ExcludeWeekends = ExcludeWeekendsCheck.IsChecked == true; InvalidateAndRefresh(); } };
-        NetworkHolidayCheck.IsCheckedChanged += (_, _) => { if (_config != null) _config.EnableNetworkHolidayUpdate = NetworkHolidayCheck.IsChecked == true; } };
+        StartDatePicker.SelectedDateChanged += (_, _) =>
+        {
+            if (_config != null && StartDatePicker.SelectedDate.HasValue)
+            {
+                _config.StartDate = StartDatePicker.SelectedDate.Value.DateTime;
+                InvalidateAndRefresh();
+            }
+        };
+
+        EndDatePicker.SelectedDateChanged += (_, _) =>
+        {
+            if (_config != null && EndDatePicker.SelectedDate.HasValue)
+            {
+                _config.EndDate = EndDatePicker.SelectedDate.Value.DateTime;
+                InvalidateAndRefresh();
+            }
+        };
+
+        DailyHoursSpinner.ValueChanged += (_, _) =>
+        {
+            if (_config != null)
+                _config.DailyHours = DailyHoursSpinner.Value;
+        };
+
+        ExcludeWeekendsCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_config != null)
+            {
+                _config.ExcludeWeekends = ExcludeWeekendsCheck.IsChecked == true;
+                InvalidateAndRefresh();
+            }
+        };
+
+        NetworkHolidayCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_config != null)
+                _config.EnableNetworkHolidayUpdate = NetworkHolidayCheck.IsChecked == true;
+        };
+
         AddHolidayBtn.Click += (_, _) => AddHoliday();
         RemoveHolidayBtn.Click += (_, _) => RemoveHoliday();
         AddWorkdayBtn.Click += (_, _) => AddWorkday();
@@ -51,10 +89,14 @@ public partial class SchoolStatsSettingsPage : SettingsPageBase
         DailyHoursSpinner.Value = _config.DailyHours;
         ExcludeWeekendsCheck.IsChecked = _config.ExcludeWeekends;
         NetworkHolidayCheck.IsChecked = _config.EnableNetworkHolidayUpdate;
+
         _holidays.Clear();
-        foreach (var h in _config.CustomHolidays) _holidays.Add(new HolidayDisplayItem { Name = h.Name, StartDate = h.StartDate, EndDate = h.EndDate, Category = h.Category });
+        foreach (var h in _config.CustomHolidays)
+            _holidays.Add(new HolidayDisplayItem { Name = h.Name, StartDate = h.StartDate, EndDate = h.EndDate, Category = h.Category });
+
         _workdays.Clear();
-        foreach (var w in _config.CustomWorkdays) _workdays.Add(new HolidayDisplayItem { Name = w.Name, StartDate = w.StartDate, EndDate = w.EndDate, Category = w.Category });
+        foreach (var w in _config.CustomWorkdays)
+            _workdays.Add(new HolidayDisplayItem { Name = w.Name, StartDate = w.StartDate, EndDate = w.EndDate, Category = w.Category });
     }
 
     private void AddHoliday()
