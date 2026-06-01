@@ -1,8 +1,7 @@
 <ci:SettingsPageBase xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                      xmlns:ci="http://classisland.tech/schemas/xaml/core"
-                     x:Class="ClassIsland.SchoolStats.Views.SettingsPages.SchoolStatsSettingsPage"
-                     Title="在校时间统计设置">
+                     x:Class="ClassIsland.SchoolStats.Views.SettingsPages.SchoolStatsSettingsPage">
   <ScrollViewer>
     <StackPanel Spacing="16" Margin="16" MaxWidth="600">
       <TextBlock Text="📅 学期配置" FontSize="18" FontWeight="Bold" />
