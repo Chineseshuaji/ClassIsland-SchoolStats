@@ -31,23 +31,30 @@ jobs:
       - name: Build Release
         run: dotnet build -c Release --no-restore
 
-      - name: Collect .cipx artifact
+      - name: Find and Upload .cipx
         shell: pwsh
         run: |
-          $cipx = Get-ChildItem -Path bin/Release/net8.0 -Filter *.cipx -Recurse | Select-Object -First 1
+          Write-Host "=== Listing all output files ==="
+          Get-ChildItem -Path bin/Release -Recurse | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "=== Searching for .cipx ==="
+          $cipx = Get-ChildItem -Path bin -Filter *.cipx -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($cipx) {
-            Write-Host "Found: $($cipx.FullName)"
+            Write-Host "Found cipx: $($cipx.FullName)"
+            # Copy to workspace root for easy upload
+            Copy-Item $cipx.FullName -Destination ./
+            Write-Host "Copied to workspace root"
           } else {
-            Write-Error "No .cipx file found in build output!"
-            Get-ChildItem -Path bin/Release/net8.0 -Recurse | ForEach-Object { $_.FullName }
-            exit 1
+            Write-Host "No .cipx found in bin/, searching entire workspace..."
+            Get-ChildItem -Path . -Filter *.cipx -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Found: $($_.FullName)" }
           }
 
       - name: Upload .cipx artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ClassIsland.SchoolStats.cipx
-          path: bin/Release/net8.0/*.cipx
+          name: ClassIsland.SchoolStats
+          path: |
+            bin/**/*.cipx
+            *.cipx
           if-no-files-found: error
 
       - name: Upload full build output (for debugging)
