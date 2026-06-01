@@ -9,12 +9,7 @@ using ClassIsland.Shared;
 
 namespace ClassIsland.SchoolStats.Views.SettingsPages;
 
-[SettingsPageInfo(
-    id: "classisland.schoolstats.settings",
-    name: "在校时间统计",
-    iconSource: "fa-solid fa-graduation-cap",
-    description: "配置学期起止日期、自定义假期与补班日")]
-[Group("classisland.schoolstats")]
+[SettingsPageInfo("classisland.schoolstats.settings", "在校时间统计")]
 public partial class SchoolStatsSettingsPage : SettingsPageBase
 {
     private SemesterConfiguration? _config;
