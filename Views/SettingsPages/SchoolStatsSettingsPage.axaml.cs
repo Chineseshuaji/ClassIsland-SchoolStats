@@ -51,8 +51,8 @@ public partial class SchoolStatsSettingsPage : SettingsPageBase
 
         DailyHoursSpinner.ValueChanged += (_, _) =>
         {
-            if (_config != null)
-                _config.DailyHours = DailyHoursSpinner.Value;
+            if (_config != null && DailyHoursSpinner.Value.HasValue)
+                _config.DailyHours = (double)DailyHoursSpinner.Value.Value;
         };
 
         ExcludeWeekendsCheck.IsCheckedChanged += (_, _) =>
@@ -81,7 +81,7 @@ public partial class SchoolStatsSettingsPage : SettingsPageBase
         if (_config == null) return;
         StartDatePicker.SelectedDate = new DateTimeOffset(_config.StartDate);
         EndDatePicker.SelectedDate = new DateTimeOffset(_config.EndDate);
-        DailyHoursSpinner.Value = _config.DailyHours;
+        DailyHoursSpinner.Value = (decimal)_config.DailyHours;
         ExcludeWeekendsCheck.IsChecked = _config.ExcludeWeekends;
         NetworkHolidayCheck.IsChecked = _config.EnableNetworkHolidayUpdate;
 

@@ -19,7 +19,7 @@ public class SchoolStatsPlugin : PluginBase
     public override void Initialize(HostBuilderContext context, IServiceCollection services)
     {
         var configPath = Path.Combine(PluginConfigFolder, "settings.json");
-        Config = ConfigureFileHelper.LoadConfig(configPath, () => new SemesterConfiguration());
+        Config = ConfigureFileHelper.LoadConfig<SemesterConfiguration>(configPath);
         Config.PropertyChanged += (_, _) =>
             ConfigureFileHelper.SaveConfig(configPath, Config);
 
@@ -43,7 +43,6 @@ public class SchoolStatsPlugin : PluginBase
         holidayProvider.GetHolidaysAsync(currentYear + 1).GetAwaiter().GetResult();
 
         services.AddComponent<StatsComponent, StatsComponentSettingsControl>();
-        services.AddSettingsPageGroup("classisland.schoolstats", "📊", "在校时间统计");
         services.AddSettingsPage<SchoolStatsSettingsPage>();
     }
 }
