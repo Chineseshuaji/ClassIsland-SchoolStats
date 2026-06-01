@@ -5,6 +5,7 @@ using ClassIsland.Core.Abstractions.Controls;
 using ClassIsland.Core.Attributes;
 using ClassIsland.SchoolStats.Models;
 using ClassIsland.SchoolStats.Services;
+using ClassIsland.Shared;
 
 namespace ClassIsland.SchoolStats.Views.SettingsPages;
 
@@ -35,7 +36,7 @@ public partial class SchoolStatsSettingsPage : SettingsPageBase
         EndDatePicker.SelectedDateChanged += (_, _) => { if (_config != null && EndDatePicker.SelectedDate.HasValue) { _config.EndDate = EndDatePicker.SelectedDate.Value.DateTime; InvalidateAndRefresh(); } };
         DailyHoursSpinner.ValueChanged += (_, _) => { if (_config != null) _config.DailyHours = DailyHoursSpinner.Value; };
         ExcludeWeekendsCheck.IsCheckedChanged += (_, _) => { if (_config != null) { _config.ExcludeWeekends = ExcludeWeekendsCheck.IsChecked == true; InvalidateAndRefresh(); } };
-        NetworkHolidayCheck.IsCheckedChanged += (_, _) => { if (_config != null) _config.EnableNetworkHolidayUpdate = NetworkHolidayCheck.IsChecked == true; };
+        NetworkHolidayCheck.IsCheckedChanged += (_, _) => { if (_config != null) _config.EnableNetworkHolidayUpdate = NetworkHolidayCheck.IsChecked == true; } };
         AddHolidayBtn.Click += (_, _) => AddHoliday();
         RemoveHolidayBtn.Click += (_, _) => RemoveHoliday();
         AddWorkdayBtn.Click += (_, _) => AddWorkday();
