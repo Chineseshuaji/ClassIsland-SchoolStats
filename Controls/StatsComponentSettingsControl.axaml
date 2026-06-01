@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ClassIsland.SchoolStats.Controls.StatsComponentSettingsControl">
+    <StackPanel Spacing="12" Margin="8">
+        <TextBlock Text="组件显示设置" FontSize="16" FontWeight="Bold" />
+        <CheckBox x:Name="ShowProgressBarCheck" Content="显示进度条" IsChecked="True" />
+        <CheckBox x:Name="ShowHoursCheck" Content="显示在校小时数" IsChecked="True" />
+        <CheckBox x:Name="CompactModeCheck" Content="紧凑模式" IsChecked="False" />
+    </StackPanel>
+</UserControl>
