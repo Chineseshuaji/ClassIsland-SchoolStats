@@ -1,0 +1,59 @@
+name: Build & Release Cipx
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build .cipx Package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build Release
+        run: dotnet build -c Release --no-restore
+
+      - name: Collect .cipx artifact
+        shell: pwsh
+        run: |
+          $cipx = Get-ChildItem -Path bin/Release/net8.0 -Filter *.cipx -Recurse | Select-Object -First 1
+          if ($cipx) {
+            Write-Host "Found: $($cipx.FullName)"
+          } else {
+            Write-Error "No .cipx file found in build output!"
+            Get-ChildItem -Path bin/Release/net8.0 -Recurse | ForEach-Object { $_.FullName }
+            exit 1
+          }
+
+      - name: Upload .cipx artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClassIsland.SchoolStats.cipx
+          path: bin/Release/net8.0/*.cipx
+          if-no-files-found: error
+
+      - name: Upload full build output (for debugging)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output-debug
+          path: bin/Release/net8.0/
+          if-no-files-found: ignore
