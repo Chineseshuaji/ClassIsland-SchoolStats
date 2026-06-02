@@ -16,6 +16,15 @@ public class StatisticsService : IStatisticsService
         _holidayService = holidayService;
         _cachePath = Path.Combine(cacheDir, "stats_cache.json");
         LoadCache();
+
+        _config.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SemesterConfiguration.StartDate)
+                or nameof(SemesterConfiguration.EndDate))
+            {
+                InvalidateCache();
+            }
+        };
     }
 
     public AggregatedStats CalculateStats()

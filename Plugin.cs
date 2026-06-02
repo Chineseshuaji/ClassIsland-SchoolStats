@@ -23,8 +23,17 @@ public class SchoolStatsPlugin : PluginBase
         Config.PropertyChanged += (_, _) =>
             ConfigureFileHelper.SaveConfig(configPath, Config);
 
-        var holidayProvider = new LocalHolidayProvider(PluginConfigFolder);
-        services.AddSingleton<IHolidayProvider>(holidayProvider);
+        // 选择节假日数据源：开启网络更新则用远程 API（含法定假+调休），否则用本地 JSON
+        IHolidayProvider holidayProvider;
+        if (Config.EnableNetworkHolidayUpdate)
+        {
+            holidayProvider = new NetworkHolidayProvider();
+        }
+        else
+        {
+            holidayProvider = new LocalHolidayProvider(PluginConfigFolder);
+        }
+        services.AddSingleton(holidayProvider);
 
         services.AddSingleton(Config);
         services.AddSingleton<IHolidayDataService>(sp =>
@@ -38,9 +47,13 @@ public class SchoolStatsPlugin : PluginBase
             return new StatisticsService(Config, hs, PluginConfigFolder);
         });
 
-        var currentYear = DateTime.Now.Year;
-        holidayProvider.GetHolidaysAsync(currentYear).GetAwaiter().GetResult();
-        holidayProvider.GetHolidaysAsync(currentYear + 1).GetAwaiter().GetResult();
+        // 后台预热节假日数据，不阻塞插件初始化
+        _ = Task.Run(async () =>
+        {
+            var year = DateTime.Now.Year;
+            await holidayProvider.GetHolidaysAsync(year);
+            await holidayProvider.GetHolidaysAsync(year + 1);
+        });
 
         services.AddComponent<StatsComponent, StatsComponentSettingsControl>();
         services.AddSettingsPage<SchoolStatsSettingsPage>();

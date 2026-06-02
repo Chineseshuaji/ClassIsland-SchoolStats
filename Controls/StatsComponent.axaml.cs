@@ -15,6 +15,8 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
     private readonly IStatisticsService _statsService;
     private readonly SemesterConfiguration _config;
     private ILessonsService? _lessonsService;
+    private DateTime _lastUpdateDate;
+    private AggregatedStats? _cachedStats;
 
     public StatsComponent()
     {
@@ -51,7 +53,15 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
 
     private void UpdateDisplay()
     {
-        var stats = _statsService.CalculateStats();
+        var today = DateTime.Now.Date;
+
+        // 缓存：同一天不重复计算
+        if (_cachedStats is not null && _lastUpdateDate == today)
+            return;
+
+        _lastUpdateDate = today;
+        _cachedStats = _statsService.CalculateStats();
+        var stats = _cachedStats;
 
         DaysLabel.Text = $"{stats.PassedSchoolDays} 天 / {stats.TotalSchoolDays} 天";
         HoursLabel.Text = Settings.ShowHours
@@ -75,6 +85,17 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
             TooltipExclusions.Text = "已排除：\n"
                 + string.Join("\n", stats.AppliedExclusions.Take(5).Select(e => $"{e.Name}：排除 {e.ExcludedDays} 天"));
         }
+        else
+        {
+            TooltipExclusions.Text = "";
+        }
+    }
+
+    public void ForceRefresh()
+    {
+        _lastUpdateDate = default;
+        _cachedStats = null;
+        UpdateDisplay();
     }
 
     private static ILessonsService? GetLessonsServiceSafe()

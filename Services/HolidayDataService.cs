@@ -19,51 +19,51 @@ public class HolidayDataService : IHolidayDataService
         date = date.Date;
         reason = null;
 
+        // 调休工作日优先（补班日强制算上学）
         foreach (var wd in _config.CustomWorkdays)
         {
             if (wd.Contains(date))
                 return true;
         }
 
+        // 自定义假期（含寒暑假、法定假、通用假期），按分类输出原因
         foreach (var ch in _config.CustomHolidays)
         {
-            if (ch.Contains(date))
+            if (!ch.Contains(date))
+                continue;
+
+            reason = ch.Category switch
             {
-                reason = $"自定义假期：{ch.Name}";
-                return false;
-            }
+                HolidayCategory.WinterBreak => $"寒假：{ch.Name}",
+                HolidayCategory.SummerBreak => $"暑假：{ch.Name}",
+                HolidayCategory.LegalHoliday => $"法定节假日：{ch.Name}",
+                _ => $"自定义假期：{ch.Name}"
+            };
+            return false;
         }
 
+        // 网络/本地节假日数据中的法定节假日与调休
         var legalHolidays = GetLegalHolidays(date.Year);
         foreach (var lh in legalHolidays)
         {
-            if (lh.Category == HolidayCategory.MakeUpWorkday && lh.Contains(date))
+            if (!lh.Contains(date))
+                continue;
+
+            if (lh.Category == HolidayCategory.MakeUpWorkday)
                 return true;
 
-            if (lh.Category == HolidayCategory.LegalHoliday && lh.Contains(date))
+            if (lh.Category == HolidayCategory.LegalHoliday)
             {
                 reason = $"法定节假日：{lh.Name}";
                 return false;
             }
         }
 
-        foreach (var ch in _config.CustomHolidays)
+        // 周末排除
+        if (_config.ExcludeWeekends && date is { DayOfWeek: DayOfWeek.Saturday or DayOfWeek.Sunday })
         {
-            if ((ch.Category == HolidayCategory.WinterBreak || ch.Category == HolidayCategory.SummerBreak)
-                && ch.Contains(date))
-            {
-                reason = (ch.Category == HolidayCategory.WinterBreak ? "寒假" : "暑假") + $"：{ch.Name}";
-                return false;
-            }
-        }
-
-        if (_config.ExcludeWeekends)
-        {
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
-            {
-                reason = "周末";
-                return false;
-            }
+            reason = "周末";
+            return false;
         }
 
         return true;
