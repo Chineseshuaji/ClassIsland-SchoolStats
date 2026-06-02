@@ -77,6 +77,12 @@ jobs:
         with:
           name: ClassIsland.SchoolStats
 
+      - name: Move .cipx to root
+        shell: bash
+        run: |
+          find . -name "*.cipx" -exec mv {} ./ \;
+          ls -la ./*.cipx
+
       - name: Create Pre-release
         uses: ncipollo/release-action@v1
         with:
