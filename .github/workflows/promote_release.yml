@@ -1,0 +1,60 @@
+name: Promote Pre-release to Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要提升的预发布标签（如 v1.0.0.1）'
+        required: true
+        type: string
+      make_latest:
+        description: '是否标记为 Latest Release'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  promote:
+    name: Promote ${{ github.event.inputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          RELEASE_JSON=$(gh release view "$TAG" --json id,isPrerelease,isDraft 2>/dev/null || echo "")
+
+          if [ -z "$RELEASE_JSON" ]; then
+            echo "❌ 未找到标签为 $TAG 的 Release"
+            exit 1
+          fi
+
+          IS_PRERELEASE=$(echo "$RELEASE_JSON" | jq -r '.isPrerelease')
+          IS_DRAFT=$(echo "$RELEASE_JSON" | jq -r '.isDraft')
+
+          echo "📋 Release: $TAG | Pre-release: $IS_PRERELEASE | Draft: $IS_DRAFT"
+
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "⚠️  先取消 Draft..."
+            gh release edit "$TAG" --draft=false
+            IS_PRERELEASE=$(gh release view "$TAG" --json isPrerelease | jq -r '.isPrerelease')
+          fi
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            EXTRA_FLAGS=""
+            [ "${{ github.event.inputs.make_latest }}" = "true" ] && EXTRA_FLAGS="--latest"
+            gh release edit "$TAG" --prerelease=false $EXTRA_FLAGS
+            echo "✅ $TAG 已提升为正式 Release"
+          else
+            echo "ℹ️  $TAG 已是正式 Release"
+          fi
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "### ✅ 发布提升完成" >> $GITHUB_STEP_SUMMARY
+          echo "| 标签 | \`${{ github.event.inputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 状态 | 正式 Release |" >> $GITHUB_STEP_SUMMARY
+          echo "| 链接 | [查看](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}) |" >> $GITHUB_STEP_SUMMARY
