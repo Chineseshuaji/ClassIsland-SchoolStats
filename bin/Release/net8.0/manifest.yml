@@ -1,8 +1,0 @@
-id: classisland.schoolstats
-name: 在校时间统计
-apiVersion: 2.0.0.0
-description: 统计学期内在校天数与时长，自动排除周末、法定节假日和寒暑假
-entranceAssembly: "ClassIsland.SchoolStats.dll"
-url: https://github.com/Chineseshuaji/ClassIsland-SchoolStats
-author: Chineseshuaji
-version: 1.0.0.0

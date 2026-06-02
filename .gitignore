@@ -1,0 +1,7 @@
+bin/
+obj/
+cipx/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
