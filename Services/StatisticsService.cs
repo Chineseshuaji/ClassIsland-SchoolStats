@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using ClassIsland.SchoolStats.Models;
 
@@ -108,8 +109,9 @@ public class StatisticsService : IStatisticsService
                     _dailyCache = list.ToDictionary(r => r.Date, r => r);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.WriteLine($"[SchoolStats] 缓存加载失败: {ex.Message}");
             _dailyCache = [];
         }
     }
