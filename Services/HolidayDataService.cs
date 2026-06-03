@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ClassIsland.SchoolStats.Models;
 
 namespace ClassIsland.SchoolStats.Services;
@@ -12,6 +13,14 @@ public class HolidayDataService : IHolidayDataService
     {
         _holidayProvider = holidayProvider;
         _config = config;
+
+        // 后台预热节假日缓存，避免首次 IsSchoolDay 调用时触发同步等待
+        _ = Task.Run(async () =>
+        {
+            var year = DateTime.Now.Year;
+            await WarmUpAsync(year);
+            await WarmUpAsync(year + 1);
+        });
     }
 
     public bool IsSchoolDay(DateTime date, out string? reason)
@@ -73,7 +82,9 @@ public class HolidayDataService : IHolidayDataService
     {
         if (!_legalHolidayCache.TryGetValue(year, out var holidays))
         {
-            holidays = _holidayProvider.GetHolidaysAsync(year).GetAwaiter().GetResult();
+            // Task.Run 将异步调用调度到线程池，避免 UI 同步上下文死锁
+            holidays = Task.Run(() => _holidayProvider.GetHolidaysAsync(year))
+                .GetAwaiter().GetResult();
             _legalHolidayCache[year] = holidays;
         }
         return holidays;
