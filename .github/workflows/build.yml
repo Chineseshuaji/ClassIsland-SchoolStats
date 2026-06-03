@@ -89,5 +89,6 @@ jobs:
           artifacts: "*.cipx"
           prerelease: true
           generateReleaseNotes: true
+          allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
