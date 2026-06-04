@@ -4,7 +4,6 @@ using ClassIsland.Core.Extensions.Registry;
 using ClassIsland.SchoolStats.Controls;
 using ClassIsland.SchoolStats.Models;
 using ClassIsland.SchoolStats.Services;
-using ClassIsland.SchoolStats.Views.SettingsPages;
 using ClassIsland.Shared.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -56,6 +55,5 @@ public class SchoolStatsPlugin : PluginBase
         });
 
         services.AddComponent<StatsComponent, StatsComponentSettingsControl>();
-        services.AddSettingsPage<SchoolStatsSettingsPage>();
     }
 }

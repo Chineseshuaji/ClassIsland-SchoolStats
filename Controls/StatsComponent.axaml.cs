@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ClassIsland.Core.Abstractions.Controls;
@@ -31,8 +32,14 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
         base.OnLoaded(e);
         SyncSettings();
         UpdateDisplay();
+
+        // 主定时器：每分钟刷新日期检查
         if (_lessonsService != null)
             _lessonsService.PostMainTimerTicked += OnTimerTicked;
+
+        // 监听设置变更，实时刷新组件显示
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
+        _config.PropertyChanged += OnConfigPropertyChanged;
     }
 
     protected override void OnUnloaded(RoutedEventArgs e)
@@ -40,6 +47,19 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
         base.OnUnloaded(e);
         if (_lessonsService != null)
             _lessonsService.PostMainTimerTicked -= OnTimerTicked;
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
+        _config.PropertyChanged -= OnConfigPropertyChanged;
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        SyncSettings();
+        ForceRefresh();
+    }
+
+    private void OnConfigPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        ForceRefresh();
     }
 
     private void SyncSettings()
@@ -55,12 +75,13 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
     {
         var today = DateTime.Now.Date;
 
-        // 缓存：同一天不重复计算
-        if (_cachedStats is not null && _lastUpdateDate == today)
-            return;
+        // 同一天复用缓存数据，避免重复计算，但始终刷新 UI
+        if (_cachedStats is null || _lastUpdateDate != today)
+        {
+            _lastUpdateDate = today;
+            _cachedStats = _statsService.CalculateStats();
+        }
 
-        _lastUpdateDate = today;
-        _cachedStats = _statsService.CalculateStats();
         var stats = _cachedStats;
 
         DaysLabel.Text = $"{stats.PassedSchoolDays} 天 / {stats.TotalSchoolDays} 天";

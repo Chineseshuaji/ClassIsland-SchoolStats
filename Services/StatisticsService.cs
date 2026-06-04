@@ -21,7 +21,10 @@ public class StatisticsService : IStatisticsService
         _config.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(SemesterConfiguration.StartDate)
-                or nameof(SemesterConfiguration.EndDate))
+                or nameof(SemesterConfiguration.EndDate)
+                or nameof(SemesterConfiguration.ExcludeWeekends)
+                or nameof(SemesterConfiguration.CustomHolidays)
+                or nameof(SemesterConfiguration.CustomWorkdays))
             {
                 InvalidateCache();
             }
