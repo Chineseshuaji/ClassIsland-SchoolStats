@@ -4,4 +4,5 @@ cipx/
 *.user
 *.suo
 .vs/
+.idea/
 *.DotSettings.user

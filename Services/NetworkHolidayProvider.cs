@@ -14,6 +14,12 @@ public class NetworkHolidayProvider : IHolidayProvider
 
     private readonly HttpClient _httpClient;
     private readonly Dictionary<int, List<HolidayInfo>> _cache = [];
+    private readonly object _cacheLock = new();
+    public HolidayDataStatus Status { get; } = new()
+    {
+        Source = "联网节假日数据",
+        Message = "尚未加载节假日数据"
+    };
 
     public NetworkHolidayProvider(HttpClient? httpClient = null)
     {
@@ -27,15 +33,27 @@ public class NetworkHolidayProvider : IHolidayProvider
 
     public async Task<IReadOnlyList<HolidayInfo>> GetHolidaysAsync(int year)
     {
-        if (_cache.TryGetValue(year, out var cached))
-            return cached;
+        lock (_cacheLock)
+        {
+            if (_cache.TryGetValue(year, out var cached))
+                return cached;
+        }
 
         var list = await FetchYearAsync(year);
-        _cache[year] = list;
+        lock (_cacheLock)
+        {
+            _cache[year] = list;
+        }
         return list;
     }
 
-    public void InvalidateCache(int year) => _cache.Remove(year);
+    public void InvalidateCache(int year)
+    {
+        lock (_cacheLock)
+        {
+            _cache.Remove(year);
+        }
+    }
 
     private async Task<List<HolidayInfo>> FetchYearAsync(int year)
     {
@@ -49,11 +67,11 @@ public class NetworkHolidayProvider : IHolidayProvider
             if (!doc.RootElement.TryGetProperty("code", out var codeProp)
                 || codeProp.GetInt32() != 0)
             {
-                return [];
+                return SetFailedStatus(year, "接口返回异常");
             }
 
             if (!doc.RootElement.TryGetProperty("holiday", out var holidayProp))
-                return [];
+                return SetFailedStatus(year, "接口响应缺少 holiday 字段");
 
             var result = new List<HolidayInfo>();
             foreach (var entry in holidayProp.EnumerateObject())
@@ -81,19 +99,32 @@ public class NetworkHolidayProvider : IHolidayProvider
                 });
             }
 
+            Status.IsAvailable = result.Count > 0;
+            Status.Message = result.Count > 0
+                ? $"{year} 年已加载 {result.Count} 条记录"
+                : $"{year} 年没有可用记录";
+            Status.LastUpdatedAt = DateTime.Now;
             return result;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            return [];
+            return SetFailedStatus(year, $"网络请求失败：{ex.Message}");
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException ex)
         {
-            return [];
+            return SetFailedStatus(year, $"请求超时：{ex.Message}");
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            return [];
+            return SetFailedStatus(year, $"数据解析失败：{ex.Message}");
         }
+    }
+
+    private List<HolidayInfo> SetFailedStatus(int year, string message)
+    {
+        Status.IsAvailable = false;
+        Status.Message = $"{year} 年加载失败，{message}";
+        Status.LastUpdatedAt = DateTime.Now;
+        return [];
     }
 }

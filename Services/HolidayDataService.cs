@@ -8,6 +8,7 @@ public class HolidayDataService : IHolidayDataService
     private readonly IHolidayProvider _holidayProvider;
     private readonly SemesterConfiguration _config;
     private readonly Dictionary<int, IReadOnlyList<HolidayInfo>> _legalHolidayCache = [];
+    private readonly object _cacheLock = new();
 
     public HolidayDataService(IHolidayProvider holidayProvider, SemesterConfiguration config)
     {
@@ -18,8 +19,8 @@ public class HolidayDataService : IHolidayDataService
         _ = Task.Run(async () =>
         {
             var year = DateTime.Now.Year;
-            await WarmUpAsync(year);
             await WarmUpAsync(year + 1);
+            await WarmUpAsync(year);
         });
     }
 
@@ -80,19 +81,30 @@ public class HolidayDataService : IHolidayDataService
 
     private IReadOnlyList<HolidayInfo> GetLegalHolidays(int year)
     {
-        if (!_legalHolidayCache.TryGetValue(year, out var holidays))
+        lock (_cacheLock)
         {
-            // Task.Run 将异步调用调度到线程池，避免 UI 同步上下文死锁
-            holidays = Task.Run(() => _holidayProvider.GetHolidaysAsync(year))
-                .GetAwaiter().GetResult();
+            if (_legalHolidayCache.TryGetValue(year, out var cached))
+                return cached;
+        }
+
+        // Task.Run 将异步调用调度到线程池，避免 UI 同步上下文死锁
+        var holidays = Task.Run(() => _holidayProvider.GetHolidaysAsync(year))
+            .GetAwaiter().GetResult();
+
+        lock (_cacheLock)
+        {
             _legalHolidayCache[year] = holidays;
         }
+
         return holidays;
     }
 
     public async Task WarmUpAsync(int year)
     {
         var holidays = await _holidayProvider.GetHolidaysAsync(year);
-        _legalHolidayCache[year] = holidays;
+        lock (_cacheLock)
+        {
+            _legalHolidayCache[year] = holidays;
+        }
     }
 }

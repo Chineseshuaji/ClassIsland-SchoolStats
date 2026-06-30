@@ -1,12 +1,16 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             x:Class="ClassIsland.SchoolStats.Controls.StatsComponent">
+<ci:ComponentBase xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:local="clr-namespace:ClassIsland.SchoolStats.Controls"
+                  xmlns:ci="clr-namespace:ClassIsland.Core.Abstractions.Controls;assembly=ClassIsland.Core"
+                  xmlns:models="clr-namespace:ClassIsland.SchoolStats.Models"
+                  mc:Ignorable="d"
+                  x:Class="ClassIsland.SchoolStats.Controls.StatsComponent"
+                  x:TypeArguments="models:StatsComponentSettings">
 
     <!-- 主显示 -->
-    <Panel>
+    <Panel DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatsComponent}}">
         <StackPanel x:Name="MainDisplay"
                     Orientation="Horizontal"
                     Spacing="6"
@@ -42,6 +46,9 @@
                 <TextBlock x:Name="HoursLabel"
                            FontSize="11"
                            Opacity="0.8" />
+                <TextBlock x:Name="WeekLabel"
+                           FontSize="11"
+                           Opacity="0.8" />
                 <ProgressBar x:Name="ProgressBar"
                              Height="4"
                              Minimum="0"
@@ -53,7 +60,7 @@
 
         <!-- 悬停展开详情 (Tooltip) -->
         <ToolTip.Tip>
-            <StackPanel Spacing="4" MaxWidth="280">
+            <StackPanel Spacing="4" MaxWidth="360">
                 <TextBlock x:Name="TooltipTitle"
                            FontWeight="Bold"
                            FontSize="13" />
@@ -69,4 +76,4 @@
         </ToolTip.Tip>
     </Panel>
 
-</UserControl>
+</ci:ComponentBase>

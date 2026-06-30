@@ -5,5 +5,5 @@ namespace ClassIsland.SchoolStats.Services;
 public interface IStatisticsService
 {
     AggregatedStats CalculateStats();
-    AggregatedStats CalculateStats(DateTime referenceDate);
+    AggregatedStats CalculateStats(DateTime referenceDateTime);
 }
