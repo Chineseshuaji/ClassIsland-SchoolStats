@@ -4,7 +4,7 @@ public class AggregatedStats
 {
     public int TotalSchoolDays { get; set; }
     public int PassedSchoolDays { get; set; }
-    public int RemainingSchoolDays => TotalSchoolDays - PassedSchoolDays;
+    public int RemainingSchoolDays => Math.Max(0, TotalSchoolDays - PassedSchoolDays);
     public double PassedSchoolHours { get; set; }
     public double TotalSchoolHours { get; set; }
     public double RemainingSchoolHours => Math.Max(0, TotalSchoolHours - PassedSchoolHours);
@@ -15,7 +15,9 @@ public class AggregatedStats
     public string RemainingSchoolTimeText => FormatSchoolTime(RemainingTimeDisplayPrecision.Seconds, false);
     public string RemainingSchoolCompactTimeText => FormatSchoolTime(RemainingTimeDisplayPrecision.Seconds, true);
     public double ProgressPercentage =>
-        TotalSchoolHours > 0 ? Math.Round(PassedSchoolHours / TotalSchoolHours * 100.0, 1) : 0.0;
+        TotalSchoolHours > 0
+            ? Math.Round(Math.Clamp(PassedSchoolHours / TotalSchoolHours * 100.0, 0, 100), 1)
+            : 0.0;
     public WeeklyStats CurrentWeek { get; set; } = new();
     public List<ExclusionDetail> AppliedExclusions { get; set; } = [];
     public DateTime ReferenceDate { get; set; } = DateTime.Now.Date;
@@ -125,5 +127,7 @@ public class WeeklyStats
     public double PassedSchoolHours { get; set; }
     public double RemainingSchoolHours => Math.Max(0, TotalSchoolHours - PassedSchoolHours);
     public double ProgressPercentage =>
-        TotalSchoolHours > 0 ? Math.Round(PassedSchoolHours / TotalSchoolHours * 100.0, 1) : 0.0;
+        TotalSchoolHours > 0
+            ? Math.Round(Math.Clamp(PassedSchoolHours / TotalSchoolHours * 100.0, 0, 100), 1)
+            : 0.0;
 }

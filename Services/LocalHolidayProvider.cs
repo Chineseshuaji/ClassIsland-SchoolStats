@@ -14,6 +14,7 @@ public class LocalHolidayProvider : IHolidayProvider
 
     private readonly string[] _dataDirs;
     private readonly object _cacheLock = new();
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
     private Dictionary<int, List<HolidayInfo>>? _cache;
     public HolidayDataStatus Status { get; } = new()
     {
@@ -29,7 +30,9 @@ public class LocalHolidayProvider : IHolidayProvider
             .ToArray();
     }
 
-    public async Task<IReadOnlyList<HolidayInfo>> GetHolidaysAsync(int year)
+    public async Task<IReadOnlyList<HolidayInfo>> GetHolidaysAsync(
+        int year,
+        CancellationToken cancellationToken = default)
     {
         lock (_cacheLock)
         {
@@ -37,11 +40,25 @@ public class LocalHolidayProvider : IHolidayProvider
                 return _cache.TryGetValue(year, out var cachedList) ? cachedList : [];
         }
 
-        var loaded = await LoadAllAsync();
-        lock (_cacheLock)
+        await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            _cache ??= loaded;
-            return _cache.TryGetValue(year, out var list) ? list : [];
+            lock (_cacheLock)
+            {
+                if (_cache != null)
+                    return _cache.TryGetValue(year, out var cachedList) ? cachedList : [];
+            }
+
+            var loaded = await LoadAllAsync(cancellationToken).ConfigureAwait(false);
+            lock (_cacheLock)
+            {
+                _cache ??= loaded;
+                return _cache.TryGetValue(year, out var list) ? list : [];
+            }
+        }
+        finally
+        {
+            _loadLock.Release();
         }
     }
 
@@ -49,11 +66,15 @@ public class LocalHolidayProvider : IHolidayProvider
     {
         lock (_cacheLock)
         {
-            _cache?.Remove(year);
+            // The source file contains all years. Clearing only one entry would make
+            // that year permanently appear missing because a non-null cache is treated
+            // as fully loaded.
+            _cache = null;
         }
     }
 
-    private async Task<Dictionary<int, List<HolidayInfo>>> LoadAllAsync()
+    private async Task<Dictionary<int, List<HolidayInfo>>> LoadAllAsync(
+        CancellationToken cancellationToken)
     {
         var path = _dataDirs
             .Select(x => Path.Combine(x, "Assets", "holidays.json"))
@@ -61,28 +82,23 @@ public class LocalHolidayProvider : IHolidayProvider
 
         if (path == null)
         {
-            Status.IsAvailable = false;
-            Status.Message = "未找到 Assets/holidays.json";
-            Status.LastUpdatedAt = DateTime.Now;
+            Status.Update("本地节假日数据", "未找到 Assets/holidays.json", false);
             return [];
         }
 
         List<HolidayJsonRecord> records;
         try
         {
-            var json = await File.ReadAllTextAsync(path);
+            var json = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
             records = JsonSerializer.Deserialize<List<HolidayJsonRecord>>(json, JsonOptions) ?? [];
-            Status.IsAvailable = records.Count > 0;
-            Status.Message = records.Count > 0
-                ? $"已加载 {records.Count} 条记录"
-                : "文件为空";
-            Status.LastUpdatedAt = DateTime.Now;
+            Status.Update(
+                "本地节假日数据",
+                records.Count > 0 ? $"已加载 {records.Count} 条记录" : "文件为空",
+                records.Count > 0);
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
-            Status.IsAvailable = false;
-            Status.Message = $"加载失败：{ex.Message}";
-            Status.LastUpdatedAt = DateTime.Now;
+            Status.Update("本地节假日数据", $"加载失败：{ex.Message}", false);
             return [];
         }
 

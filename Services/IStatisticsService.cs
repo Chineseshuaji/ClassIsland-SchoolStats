@@ -4,6 +4,9 @@ namespace ClassIsland.SchoolStats.Services;
 
 public interface IStatisticsService
 {
-    AggregatedStats CalculateStats();
-    AggregatedStats CalculateStats(DateTime referenceDateTime);
+    Task<AggregatedStats> CalculateStatsAsync(
+        DateTime referenceDateTime,
+        CancellationToken cancellationToken = default);
+
+    void InvalidateCache();
 }

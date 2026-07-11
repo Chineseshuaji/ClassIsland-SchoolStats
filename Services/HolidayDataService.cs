@@ -1,110 +1,183 @@
-using System.Diagnostics;
+using System.ComponentModel;
+using System.Text.Json;
 using ClassIsland.SchoolStats.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ClassIsland.SchoolStats.Services;
 
-public class HolidayDataService : IHolidayDataService
+public sealed class HolidayDataService : IHolidayDataService, IDisposable
 {
     private readonly IHolidayProvider _holidayProvider;
-    private readonly SemesterConfiguration _config;
+    private readonly SemesterConfiguration _configuration;
+    private readonly ILogger<HolidayDataService>? _logger;
     private readonly Dictionary<int, IReadOnlyList<HolidayInfo>> _legalHolidayCache = [];
+    private readonly Dictionary<int, SemaphoreSlim> _yearLocks = [];
     private readonly object _cacheLock = new();
+    private long _generation;
 
-    public HolidayDataService(IHolidayProvider holidayProvider, SemesterConfiguration config)
+    public HolidayDataService(
+        IHolidayProvider holidayProvider,
+        SemesterConfiguration configuration,
+        ILogger<HolidayDataService>? logger = null)
     {
         _holidayProvider = holidayProvider;
-        _config = config;
-
-        // 后台预热节假日缓存，避免首次 IsSchoolDay 调用时触发同步等待
-        _ = Task.Run(async () =>
-        {
-            var year = DateTime.Now.Year;
-            await WarmUpAsync(year + 1);
-            await WarmUpAsync(year);
-        });
+        _configuration = configuration;
+        _logger = logger;
+        _configuration.PropertyChanged += OnConfigurationChanged;
     }
 
-    public bool IsSchoolDay(DateTime date, out string? reason)
+    public async Task<SchoolDayResult> GetSchoolDayAsync(
+        DateTime date,
+        CancellationToken cancellationToken = default)
     {
         date = date.Date;
-        reason = null;
 
-        // 调休工作日优先（补班日强制算上学）
-        foreach (var wd in _config.CustomWorkdays)
+        // Explicit school days are the strongest user override.
+        if (_configuration.CustomWorkdays.Any(workday => workday.Contains(date)))
+            return new SchoolDayResult(true, null);
+
+        var customHoliday = _configuration.CustomHolidays.FirstOrDefault(holiday => holiday.Contains(date));
+        if (customHoliday is not null)
         {
-            if (wd.Contains(date))
-                return true;
-        }
-
-        // 自定义假期（含寒暑假、法定假、通用假期），按分类输出原因
-        foreach (var ch in _config.CustomHolidays)
-        {
-            if (!ch.Contains(date))
-                continue;
-
-            reason = ch.Category switch
+            var reason = customHoliday.Category switch
             {
-                HolidayCategory.WinterBreak => $"寒假：{ch.Name}",
-                HolidayCategory.SummerBreak => $"暑假：{ch.Name}",
-                HolidayCategory.LegalHoliday => $"法定节假日：{ch.Name}",
-                _ => $"自定义假期：{ch.Name}"
+                HolidayCategory.WinterBreak => $"寒假：{customHoliday.Name}",
+                HolidayCategory.SummerBreak => $"暑假：{customHoliday.Name}",
+                HolidayCategory.LegalHoliday => $"法定节假日：{customHoliday.Name}",
+                _ => $"自定义假期：{customHoliday.Name}"
             };
-            return false;
+            return new SchoolDayResult(false, reason);
         }
 
-        // 网络/本地节假日数据中的法定节假日与调休
-        var legalHolidays = GetLegalHolidays(date.Year);
-        foreach (var lh in legalHolidays)
+        var legalHolidays = await GetLegalHolidaysAsync(date.Year, cancellationToken)
+            .ConfigureAwait(false);
+        var matchingOfficialRecords = legalHolidays
+            .Where(holiday => holiday.Contains(date))
+            .ToList();
+
+        // Make-up workdays are evaluated before legal holidays so malformed or
+        // duplicated source data cannot make the result depend on list ordering.
+        if (matchingOfficialRecords.Any(holiday => holiday.Category == HolidayCategory.MakeUpWorkday))
+            return new SchoolDayResult(true, null);
+
+        var legalHoliday = matchingOfficialRecords
+            .FirstOrDefault(holiday => holiday.Category == HolidayCategory.LegalHoliday);
+        if (legalHoliday is not null)
+            return new SchoolDayResult(false, $"法定节假日：{legalHoliday.Name}");
+
+        if (_configuration.ExcludeWeekends
+            && date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
         {
-            if (!lh.Contains(date))
-                continue;
+            return new SchoolDayResult(false, "周末");
+        }
 
-            if (lh.Category == HolidayCategory.MakeUpWorkday)
-                return true;
+        return new SchoolDayResult(true, null);
+    }
 
-            if (lh.Category == HolidayCategory.LegalHoliday)
+    public async Task WarmUpAsync(
+        IEnumerable<int> years,
+        CancellationToken cancellationToken = default)
+    {
+        var tasks = years
+            .Distinct()
+            .Select(year => GetLegalHolidaysAsync(year, cancellationToken));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    public void InvalidateCache()
+    {
+        int[] years;
+        lock (_cacheLock)
+        {
+            _generation++;
+            years = _legalHolidayCache.Keys
+                .Concat(_yearLocks.Keys)
+                .Distinct()
+                .ToArray();
+            _legalHolidayCache.Clear();
+        }
+
+        foreach (var year in years)
+            _holidayProvider.InvalidateCache(year);
+    }
+
+    private async Task<IReadOnlyList<HolidayInfo>> GetLegalHolidaysAsync(
+        int year,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            lock (_cacheLock)
             {
-                reason = $"法定节假日：{lh.Name}";
-                return false;
+                if (_legalHolidayCache.TryGetValue(year, out var cached))
+                    return cached;
+            }
+
+            var yearLock = GetYearLock(year);
+            await yearLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                long generation;
+                lock (_cacheLock)
+                {
+                    if (_legalHolidayCache.TryGetValue(year, out var cached))
+                        return cached;
+                    generation = _generation;
+                }
+
+                var holidays = await _holidayProvider.GetHolidaysAsync(year, cancellationToken)
+                    .ConfigureAwait(false);
+                lock (_cacheLock)
+                {
+                    if (generation == _generation)
+                    {
+                        _legalHolidayCache[year] = holidays;
+                        return holidays;
+                    }
+                }
+
+                _logger?.LogDebug(
+                    "Holiday source changed while loading {Year}; retrying",
+                    year);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (
+                ex is HttpRequestException or IOException or JsonException or InvalidOperationException)
+            {
+                _logger?.LogError(ex, "Unable to load holiday data for {Year}", year);
+                return [];
+            }
+            finally
+            {
+                yearLock.Release();
             }
         }
-
-        // 周末排除
-        if (_config.ExcludeWeekends && date is { DayOfWeek: DayOfWeek.Saturday or DayOfWeek.Sunday })
-        {
-            reason = "周末";
-            return false;
-        }
-
-        return true;
     }
 
-    private IReadOnlyList<HolidayInfo> GetLegalHolidays(int year)
+    private SemaphoreSlim GetYearLock(int year)
     {
         lock (_cacheLock)
         {
-            if (_legalHolidayCache.TryGetValue(year, out var cached))
-                return cached;
+            if (!_yearLocks.TryGetValue(year, out var semaphore))
+            {
+                semaphore = new SemaphoreSlim(1, 1);
+                _yearLocks[year] = semaphore;
+            }
+            return semaphore;
         }
-
-        // Task.Run 将异步调用调度到线程池，避免 UI 同步上下文死锁
-        var holidays = Task.Run(() => _holidayProvider.GetHolidaysAsync(year))
-            .GetAwaiter().GetResult();
-
-        lock (_cacheLock)
-        {
-            _legalHolidayCache[year] = holidays;
-        }
-
-        return holidays;
     }
 
-    public async Task WarmUpAsync(int year)
+    private void OnConfigurationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        var holidays = await _holidayProvider.GetHolidaysAsync(year);
-        lock (_cacheLock)
-        {
-            _legalHolidayCache[year] = holidays;
-        }
+        if (e.PropertyName == nameof(SemesterConfiguration.EnableNetworkHolidayUpdate))
+            InvalidateCache();
+    }
+
+    public void Dispose()
+    {
+        _configuration.PropertyChanged -= OnConfigurationChanged;
     }
 }

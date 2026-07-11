@@ -108,7 +108,7 @@
                 <Button x:Name="RemoveManualExclusionBtn" Content="移除选中排除" />
             </StackPanel>
             <CheckBox x:Name="ExcludeWeekendsCheck" Content="自动排除周末" IsChecked="True" />
-            <CheckBox x:Name="NetworkHolidayCheck" Content="联网更新节假日（重启后生效）" IsChecked="False" />
+            <CheckBox x:Name="NetworkHolidayCheck" Content="联网更新节假日（可即时切换，本地数据兜底）" IsChecked="False" />
             <TextBlock x:Name="HolidayDataStatusText"
                        FontSize="12"
                        Opacity="0.8"

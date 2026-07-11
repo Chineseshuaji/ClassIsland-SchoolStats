@@ -50,7 +50,7 @@
                            FontSize="11"
                            Opacity="0.8" />
                 <ProgressBar x:Name="ProgressBar"
-                             Height="4"
+                             Height="2"
                              Minimum="0"
                              Maximum="100"
                              MinWidth="100" />

@@ -14,6 +14,7 @@ public partial class StatsComponentSettingsControl : ComponentBase<StatsComponen
     private SemesterConfiguration? _config;
     private IStatisticsService? _statsService;
     private IHolidayProvider? _holidayProvider;
+    private PluginConfigurationStore? _configurationStore;
     private readonly ObservableCollection<HolidayDisplayItem> _holidays = [];
     private readonly ObservableCollection<HolidayDisplayItem> _workdays = [];
     private readonly ObservableCollection<ScheduleTemplateDisplayItem> _templates = [];
@@ -42,6 +43,7 @@ public partial class StatsComponentSettingsControl : ComponentBase<StatsComponen
         _config = IAppHost.GetService<SemesterConfiguration>();
         _statsService = IAppHost.GetService<IStatisticsService>();
         _holidayProvider = IAppHost.GetService<IHolidayProvider>();
+        _configurationStore = IAppHost.GetService<PluginConfigurationStore>();
 
         if (_isInitialized)
         {
@@ -147,7 +149,11 @@ public partial class StatsComponentSettingsControl : ComponentBase<StatsComponen
         {
             if (_isLoadingUi) return;
             if (_config != null)
+            {
                 _config.EnableNetworkHolidayUpdate = NetworkHolidayCheck.IsChecked == true;
+                InvalidateServiceCache();
+                UpdateHolidayStatus();
+            }
         };
 
         AddHolidayBtn.Click += (_, _) => AddHoliday();
@@ -498,14 +504,13 @@ public partial class StatsComponentSettingsControl : ComponentBase<StatsComponen
         else
             InvalidateServiceCache();
 
-        InvalidateServiceCache();
         UpdateTimeSummary();
         UpdateConfigurationValidation();
     }
 
     private void InvalidateServiceCache()
     {
-        (_statsService as StatisticsService)?.InvalidateCache();
+        _statsService?.InvalidateCache();
     }
 
     private void UpdateTimeSummary()
@@ -537,7 +542,10 @@ public partial class StatsComponentSettingsControl : ComponentBase<StatsComponen
 
     private void UpdateHolidayStatus()
     {
-        HolidayDataStatusText.Text = _holidayProvider?.Status.DisplayText ?? "节假日数据：状态不可用";
+        var status = _holidayProvider?.Status.DisplayText ?? "节假日数据：状态不可用";
+        if (!string.IsNullOrWhiteSpace(_configurationStore?.LastError))
+            status += $"\n配置：{_configurationStore.LastError}";
+        HolidayDataStatusText.Text = status;
     }
 
     private void UpdateConfigurationValidation()

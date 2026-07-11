@@ -6,6 +6,15 @@ namespace ClassIsland.SchoolStats.Models;
 
 public class SemesterConfiguration : INotifyPropertyChanged
 {
+    public const int CurrentSchemaVersion = 2;
+    public const int MaximumSemesterDays = 730;
+    public const int MaximumScheduleTemplates = 128;
+    public const int MaximumScheduleRules = 512;
+    public const int MaximumManualExclusions = 2048;
+    public const int MaximumCustomDateRanges = 512;
+    public const int MaximumNameLength = 200;
+
+    private int _schemaVersion = CurrentSchemaVersion;
     private DateTime _startDate = DateTime.Now;
     private DateTime _endDate = DateTime.Now.AddMonths(4);
     private TimeSpan _schoolStartTime = new(8, 0, 0);
@@ -22,6 +31,13 @@ public class SemesterConfiguration : INotifyPropertyChanged
     private List<ManualTimeExclusion> _manualTimeExclusions = [];
     private List<HolidayInfo> _customHolidays = [];
     private List<HolidayInfo> _customWorkdays = [];
+
+    [JsonPropertyName("schemaVersion")]
+    public int SchemaVersion
+    {
+        get => _schemaVersion;
+        set { if (value != _schemaVersion) { _schemaVersion = value; OnPropertyChanged(); } }
+    }
 
     public DateTime StartDate
     {
@@ -109,7 +125,10 @@ public class SemesterConfiguration : INotifyPropertyChanged
     }
 
     [JsonIgnore]
-    public int TotalCalendarDays => (EndDate - StartDate).Days + 1;
+    public int TotalCalendarDays => Math.Max(0, (EndDate.Date - StartDate.Date).Days + 1);
+
+    [JsonIgnore]
+    public long Revision { get; private set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -117,8 +136,12 @@ public class SemesterConfiguration : INotifyPropertyChanged
     {
         EnsureDefaultScheduleTemplate();
         var rule = ScheduleTemplateRules
-            .Where(r => r.AppliesTo(date))
-            .OrderByDescending(r => r.Date.HasValue)
+            .Select((value, index) => (value, index))
+            .Where(x => x.value.AppliesTo(date)
+                && ScheduleTemplates.Any(t => t.Id == x.value.TemplateId))
+            .OrderByDescending(x => x.value.Date.HasValue)
+            .ThenByDescending(x => x.index)
+            .Select(x => x.value)
             .FirstOrDefault();
 
         return ScheduleTemplates.FirstOrDefault(t => t.Id == rule?.TemplateId)
@@ -127,11 +150,115 @@ public class SemesterConfiguration : INotifyPropertyChanged
 
     public double GetDailyHours(DateTime date) => Math.Round(GetScheduleTemplate(date).DailyHours, 2);
 
+    public void NormalizeAfterLoad()
+    {
+        _startDate = NormalizeDate(_startDate);
+        _endDate = NormalizeDate(_endDate);
+        _scheduleTemplates = (_scheduleTemplates ?? [])
+            .OfType<ScheduleTemplate>()
+            .ToList();
+        _scheduleTemplateRules = (_scheduleTemplateRules ?? [])
+            .OfType<ScheduleTemplateRule>()
+            .ToList();
+        _manualTimeExclusions = (_manualTimeExclusions ?? [])
+            .OfType<ManualTimeExclusion>()
+            .ToList();
+        _customHolidays = (_customHolidays ?? [])
+            .OfType<HolidayInfo>()
+            .ToList();
+        _customWorkdays = (_customWorkdays ?? [])
+            .OfType<HolidayInfo>()
+            .ToList();
+        EnsureDefaultScheduleTemplate();
+
+        var usedTemplateIds = new HashSet<Guid>();
+        foreach (var template in _scheduleTemplates)
+        {
+            template.Name = DefaultName(template.Name, "默认作息");
+            if (template.Id == Guid.Empty || !usedTemplateIds.Add(template.Id))
+                template.Id = Guid.NewGuid();
+            usedTemplateIds.Add(template.Id);
+        }
+
+        foreach (var exclusion in _manualTimeExclusions)
+        {
+            exclusion.Name = DefaultName(exclusion.Name, "手动排除");
+            exclusion.Date = NormalizeDate(exclusion.Date);
+        }
+        foreach (var holiday in _customHolidays)
+        {
+            holiday.Name = DefaultName(holiday.Name, "自定义假期");
+            holiday.StartDate = NormalizeDate(holiday.StartDate);
+            holiday.EndDate = NormalizeDate(holiday.EndDate);
+        }
+        foreach (var workday in _customWorkdays)
+        {
+            workday.Name = DefaultName(workday.Name, "调休补班");
+            workday.StartDate = NormalizeDate(workday.StartDate);
+            workday.EndDate = NormalizeDate(workday.EndDate);
+        }
+        foreach (var rule in _scheduleTemplateRules.Where(rule => rule.Date.HasValue))
+            rule.Date = NormalizeDate(rule.Date!.Value);
+
+        // Schedule templates are the canonical representation in schema v2. For a
+        // legacy configuration the default template was populated by the legacy
+        // setters during deserialization, so this synchronization is order-safe.
+        var defaultTemplate = _scheduleTemplates[0];
+        _schoolStartTime = defaultTemplate.SchoolStartTime;
+        _lunchStartTime = defaultTemplate.LunchStartTime;
+        _lunchEndTime = defaultTemplate.LunchEndTime;
+        _schoolEndTime = defaultTemplate.SchoolEndTime;
+
+        _schemaVersion = CurrentSchemaVersion;
+    }
+
+    private static string DefaultName(string? name, string fallback)
+        => string.IsNullOrWhiteSpace(name) ? fallback : name;
+
+    private static DateTime NormalizeDate(DateTime value)
+        => DateTime.SpecifyKind(value.Date, DateTimeKind.Unspecified);
+
+    public string? GetStorageLimitError()
+    {
+        if (ScheduleTemplates.OfType<ScheduleTemplate>().Count() != ScheduleTemplates.Count
+            || ScheduleTemplateRules.OfType<ScheduleTemplateRule>().Count() != ScheduleTemplateRules.Count
+            || ManualTimeExclusions.OfType<ManualTimeExclusion>().Count() != ManualTimeExclusions.Count
+            || CustomHolidays.OfType<HolidayInfo>().Count() != CustomHolidays.Count
+            || CustomWorkdays.OfType<HolidayInfo>().Count() != CustomWorkdays.Count)
+        {
+            return "配置集合不能包含空项。";
+        }
+
+        if (ScheduleTemplates.Count > MaximumScheduleTemplates)
+            return $"作息模板不能超过 {MaximumScheduleTemplates} 个。";
+        if (ScheduleTemplateRules.Count > MaximumScheduleRules)
+            return $"作息规则不能超过 {MaximumScheduleRules} 条。";
+        if (ManualTimeExclusions.Count > MaximumManualExclusions)
+            return $"手动排除不能超过 {MaximumManualExclusions} 条。";
+        if (CustomHolidays.Count > MaximumCustomDateRanges
+            || CustomWorkdays.Count > MaximumCustomDateRanges)
+        {
+            return $"自定义假期或补班日不能超过 {MaximumCustomDateRanges} 条。";
+        }
+
+        var names = ScheduleTemplates.OfType<ScheduleTemplate>().Select(template => template.Name)
+            .Concat(ManualTimeExclusions.OfType<ManualTimeExclusion>().Select(exclusion => exclusion.Name))
+            .Concat(CustomHolidays.OfType<HolidayInfo>().Select(holiday => holiday.Name))
+            .Concat(CustomWorkdays.OfType<HolidayInfo>().Select(workday => workday.Name));
+        return names.Any(name => name?.Length > MaximumNameLength)
+            ? $"名称不能超过 {MaximumNameLength} 个字符。"
+            : null;
+    }
+
     public IReadOnlyList<ConfigurationIssue> ValidateConfiguration()
     {
         var issues = new List<ConfigurationIssue>();
         if (EndDate.Date < StartDate.Date)
             issues.Add(new ConfigurationIssue("学期结束日期早于开始日期。", ConfigurationIssueSeverity.Error));
+        else if (TotalCalendarDays > MaximumSemesterDays)
+            issues.Add(new ConfigurationIssue(
+                $"学期范围不能超过 {MaximumSemesterDays} 天。",
+                ConfigurationIssueSeverity.Error));
 
         EnsureDefaultScheduleTemplate();
         if (ScheduleTemplates.Count == 0)
@@ -332,7 +459,10 @@ public class SemesterConfiguration : INotifyPropertyChanged
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    {
+        Revision++;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }
 
 public class ScheduleTemplate

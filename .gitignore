@@ -6,3 +6,4 @@ cipx/
 .vs/
 .idea/
 *.DotSettings.user
+**/TestResults/

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '要提升的预发布标签（如 v1.0.0.1）'
+        description: '要提升的预发布标签（如 1.0.0.1，不带 v 前缀）'
         required: true
         type: string
       make_latest:
@@ -17,14 +17,24 @@ jobs:
   promote:
     name: Promote ${{ github.event.inputs.tag }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Promote release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event.inputs.tag }}
         run: |
-          RELEASE_JSON=$(gh release view "$TAG" --json id,isPrerelease,isDraft 2>/dev/null || echo "")
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ 标签必须为不带前缀的四段数字版本：a.b.c.d"
+            exit 1
+          fi
+
+          RELEASE_JSON=$(gh release view "$TAG" --json id,isPrerelease,isDraft,assets,body 2>/dev/null || true)
 
           if [ -z "$RELEASE_JSON" ]; then
             echo "❌ 未找到标签为 $TAG 的 Release"
@@ -33,6 +43,25 @@ jobs:
 
           IS_PRERELEASE=$(echo "$RELEASE_JSON" | jq -r '.isPrerelease')
           IS_DRAFT=$(echo "$RELEASE_JSON" | jq -r '.isDraft')
+          CIPX_COUNT=$(echo "$RELEASE_JSON" | jq '[.assets[] | select(.name | endswith(".cipx"))] | length')
+          HAS_CHECKSUM=$(echo "$RELEASE_JSON" | jq -r '.body | contains("CLASSISLAND_PKG_MD5")')
+
+          if [ "$CIPX_COUNT" -ne 1 ] || [ "$HAS_CHECKSUM" != "true" ]; then
+            echo "❌ Release 必须且只能包含一个 CIPX，并在正文中包含 CLASSISLAND_PKG_MD5 校验信息"
+            exit 1
+          fi
+
+          CIPX_NAME=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | endswith(".cipx")) | .name')
+          CHECKSUM_JSON=$(echo "$RELEASE_JSON" | jq -r '.body | capture("CLASSISLAND_PKG_MD5 (?<checksum>\\{[^\\r\\n]+\\})").checksum')
+          EXPECTED_MD5=$(echo "$CHECKSUM_JSON" | jq -r --arg name "$CIPX_NAME" '.[$name] // empty')
+          mkdir -p release-verification
+          gh release download "$TAG" --pattern "$CIPX_NAME" --dir release-verification
+          ACTUAL_MD5=$(md5sum "release-verification/$CIPX_NAME" | awk '{print toupper($1)}')
+          EXPECTED_MD5=$(echo "$EXPECTED_MD5" | tr '[:lower:]' '[:upper:]')
+          if [ -z "$EXPECTED_MD5" ] || [ "$ACTUAL_MD5" != "$EXPECTED_MD5" ]; then
+            echo "❌ Release 附件的 MD5 与正文校验信息不一致"
+            exit 1
+          fi
 
           echo "📋 Release: $TAG | Pre-release: $IS_PRERELEASE | Draft: $IS_DRAFT"
 
@@ -43,9 +72,11 @@ jobs:
           fi
 
           if [ "$IS_PRERELEASE" = "true" ]; then
-            EXTRA_FLAGS=""
-            [ "${{ github.event.inputs.make_latest }}" = "true" ] && EXTRA_FLAGS="--latest"
-            gh release edit "$TAG" --prerelease=false $EXTRA_FLAGS
+            if [ "${{ github.event.inputs.make_latest }}" = "true" ]; then
+              gh release edit "$TAG" --prerelease=false --latest
+            else
+              gh release edit "$TAG" --prerelease=false --latest=false
+            fi
             echo "✅ $TAG 已提升为正式 Release"
           else
             echo "ℹ️  $TAG 已是正式 Release"
@@ -53,8 +84,11 @@ jobs:
 
       - name: Summary
         shell: bash
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}
         run: |
           echo "### ✅ 发布提升完成" >> $GITHUB_STEP_SUMMARY
-          echo "| 标签 | \`${{ github.event.inputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 标签 | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 状态 | 正式 Release |" >> $GITHUB_STEP_SUMMARY
-          echo "| 链接 | [查看](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 链接 | [查看]($RELEASE_URL) |" >> $GITHUB_STEP_SUMMARY
