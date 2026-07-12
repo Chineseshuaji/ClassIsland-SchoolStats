@@ -10,69 +10,118 @@
                   x:TypeArguments="models:StatsComponentSettings">
 
     <!-- 主显示 -->
-    <Panel DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatsComponent}}">
-        <StackPanel x:Name="MainDisplay"
-                    Orientation="Horizontal"
-                    Spacing="6"
-                    VerticalAlignment="Center">
+    <Panel DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatsComponent}}"
+           ClipToBounds="True">
+        <Grid x:Name="MainDisplay"
+              ColumnDefinitions="Auto,*"
+              MinWidth="0"
+              MaxWidth="320"
+              VerticalAlignment="Center">
 
             <!-- 图标 -->
             <TextBlock x:Name="IconLabel"
+                       Grid.Column="0"
                        Text="📚"
                        FontSize="16"
                        VerticalAlignment="Center" />
 
-            <!-- 紧凑模式：仅显示天数和进度 -->
-            <StackPanel x:Name="CompactStack"
-                        Orientation="Horizontal"
-                        Spacing="4"
-                        IsVisible="False">
-                <TextBlock x:Name="CompactDaysLabel"
-                           FontSize="14"
-                           FontWeight="Bold"
-                           VerticalAlignment="Center" />
-                <TextBlock x:Name="CompactPercentLabel"
-                           FontSize="11"
-                           Opacity="0.7"
-                           VerticalAlignment="Center" />
-            </StackPanel>
+            <Grid Grid.Column="1"
+                  Margin="6,0,0,0"
+                  MinWidth="0">
+                <!-- 紧凑模式：仅显示剩余时间和进度 -->
+                <Grid x:Name="CompactStack"
+                      ColumnDefinitions="*,Auto"
+                      MinWidth="0"
+                      IsVisible="False">
+                    <TextBlock x:Name="CompactDaysLabel"
+                               Grid.Column="0"
+                               MinWidth="0"
+                               MaxLines="1"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="CompactPercentLabel"
+                               Grid.Column="1"
+                               Margin="4,0,0,0"
+                               MaxLines="1"
+                               FontSize="11"
+                               Opacity="0.7"
+                               VerticalAlignment="Center" />
+                </Grid>
 
-            <!-- 标准模式 -->
-            <StackPanel x:Name="StandardStack"
-                        Spacing="2">
-                <TextBlock x:Name="DaysLabel"
-                           FontSize="15"
-                           FontWeight="Bold" />
-                <TextBlock x:Name="HoursLabel"
-                           FontSize="11"
-                           Opacity="0.8" />
-                <TextBlock x:Name="WeekLabel"
-                           FontSize="11"
-                           Opacity="0.8" />
-                <ProgressBar x:Name="ProgressBar"
-                             Height="2"
-                             Minimum="0"
-                             Maximum="100"
-                             MinWidth="100" />
-            </StackPanel>
+                <!-- 标准模式 -->
+                <Grid x:Name="StandardStack"
+                      ColumnDefinitions="Auto,*"
+                      RowDefinitions="Auto,Auto,Auto"
+                      MinWidth="0">
+                    <TextBlock x:Name="DaysLabel"
+                               Grid.Row="0"
+                               Grid.Column="0"
+                               MinWidth="0"
+                               MaxLines="1"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="14"
+                               FontWeight="Bold" />
+                    <TextBlock x:Name="WeekLabel"
+                               Grid.Row="0"
+                               Grid.Column="1"
+                               Margin="8,0,0,0"
+                               MinWidth="0"
+                               MaxLines="1"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="10"
+                               HorizontalAlignment="Right"
+                               Opacity="0.8" />
+                    <TextBlock x:Name="HoursLabel"
+                               Grid.Row="1"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="2"
+                               MinWidth="0"
+                               MaxLines="1"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="10"
+                               Opacity="0.8" />
+                    <ProgressBar x:Name="ProgressBar"
+                                 Grid.Row="2"
+                                 Grid.Column="0"
+                                 Grid.ColumnSpan="2"
+                                 Margin="0,1,0,0"
+                                 Height="2"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 MinWidth="0"
+                                 HorizontalAlignment="Stretch" />
+                </Grid>
+            </Grid>
 
-        </StackPanel>
+        </Grid>
 
         <!-- 悬停展开详情 (Tooltip) -->
         <ToolTip.Tip>
-            <StackPanel Spacing="4" MaxWidth="360">
-                <TextBlock x:Name="TooltipTitle"
-                           FontWeight="Bold"
-                           FontSize="13" />
-                <TextBlock x:Name="TooltipDetail"
-                           FontSize="12"
-                           TextWrapping="Wrap" />
-                <Separator />
-                <TextBlock x:Name="TooltipExclusions"
-                           FontSize="11"
-                           TextWrapping="Wrap"
-                           Opacity="0.8" />
-            </StackPanel>
+            <ScrollViewer MaxWidth="360"
+                          MaxHeight="420"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="TooltipTitle"
+                               FontWeight="Bold"
+                               FontSize="13"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="TooltipDetail"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                    <Separator x:Name="TooltipSeparator" />
+                    <TextBlock x:Name="TooltipExclusions"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Opacity="0.8" />
+                </StackPanel>
+            </ScrollViewer>
         </ToolTip.Tip>
     </Panel>
 

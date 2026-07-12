@@ -221,15 +221,7 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
             + $"（{stats.CurrentWeek.RemainingSchoolHours:F1} 小时）\n"
             + $"进度：{stats.ProgressPercentage:F1}%";
 
-        TooltipExclusions.Text = stats.AppliedExclusions.Count == 0
-            ? string.Empty
-            : "已排除：\n" + string.Join(
-                "\n",
-                stats.AppliedExclusions.Take(5).Select(detail =>
-                    detail.StartDate == detail.EndDate
-                        ? $"{detail.Name}（{detail.StartDate:MM-dd}）：1 天"
-                        : $"{detail.Name}（{detail.StartDate:MM-dd}~{detail.EndDate:MM-dd}）："
-                          + $"{detail.ExcludedDays} 天"));
+        SetTooltipExclusions(StatsDisplayPolicy.FormatExclusions(stats.AppliedExclusions));
     }
 
     private void ShowLoadingState()
@@ -241,7 +233,7 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
         CompactPercentLabel.Text = string.Empty;
         TooltipTitle.Text = "在校时间统计";
         TooltipDetail.Text = "正在加载节假日数据并计算学期进度。";
-        TooltipExclusions.Text = string.Empty;
+        SetTooltipExclusions(string.Empty);
         ProgressBar.Value = 0;
     }
 
@@ -254,7 +246,15 @@ public partial class StatsComponent : ComponentBase<StatsComponentSettings>
         CompactPercentLabel.Text = string.Empty;
         TooltipTitle.Text = "在校时间统计";
         TooltipDetail.Text = message;
-        TooltipExclusions.Text = string.Empty;
+        SetTooltipExclusions(string.Empty);
+    }
+
+    private void SetTooltipExclusions(string text)
+    {
+        var hasExclusions = !string.IsNullOrEmpty(text);
+        TooltipSeparator.IsVisible = hasExclusions;
+        TooltipExclusions.IsVisible = hasExclusions;
+        TooltipExclusions.Text = text;
     }
 
     public void ForceRefresh() => RequestRefresh(force: true);
