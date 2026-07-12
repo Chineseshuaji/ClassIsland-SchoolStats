@@ -5,7 +5,20 @@
                   xmlns:models="clr-namespace:ClassIsland.SchoolStats.Models"
                   x:Class="ClassIsland.SchoolStats.Controls.StatsComponentSettingsControl"
                   x:TypeArguments="models:StatsComponentSettings">
-    <ScrollViewer DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatsComponentSettingsControl}}">
+    <ci:ComponentBase.Resources>
+        <DataTemplate x:Key="WrappingDisplayItemTemplate">
+            <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap" />
+        </DataTemplate>
+    </ci:ComponentBase.Resources>
+    <ci:ComponentBase.Styles>
+        <Style Selector="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </ci:ComponentBase.Styles>
+
+    <ScrollViewer DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatsComponentSettingsControl}}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="12" Margin="8">
 
             <!-- 显示设置 -->
@@ -52,30 +65,41 @@
             <TextBlock Text="作息模板" FontSize="16" FontWeight="Bold" />
             <StackPanel Spacing="6">
                 <TextBox x:Name="TemplateNameInput" Watermark="模板名称，例如：周五短课" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="上课" VerticalAlignment="Center" />
-                    <TimePicker x:Name="TemplateSchoolStartPicker" ClockIdentifier="24HourClock" />
-                    <TextBlock Text="午休开始" VerticalAlignment="Center" />
-                    <TimePicker x:Name="TemplateLunchStartPicker" ClockIdentifier="24HourClock" />
-                    <TextBlock Text="午休结束" VerticalAlignment="Center" />
-                    <TimePicker x:Name="TemplateLunchEndPicker" ClockIdentifier="24HourClock" />
-                    <TextBlock Text="放学" VerticalAlignment="Center" />
-                    <TimePicker x:Name="TemplateSchoolEndPicker" ClockIdentifier="24HourClock" />
-                    <Button x:Name="AddTemplateBtn" Content="添加模板" />
-                </StackPanel>
-                <ListBox x:Name="ScheduleTemplateListBox" MinHeight="70" />
+                <WrapPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="上课" VerticalAlignment="Center" />
+                        <TimePicker x:Name="TemplateSchoolStartPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="午休开始" VerticalAlignment="Center" />
+                        <TimePicker x:Name="TemplateLunchStartPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="午休结束" VerticalAlignment="Center" />
+                        <TimePicker x:Name="TemplateLunchEndPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="放学" VerticalAlignment="Center" />
+                        <TimePicker x:Name="TemplateSchoolEndPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <Button x:Name="AddTemplateBtn" Content="添加模板" Margin="0,0,0,8" />
+                </WrapPanel>
+                <ListBox x:Name="ScheduleTemplateListBox"
+                         MinHeight="70"
+                         ItemTemplate="{StaticResource WrappingDisplayItemTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                 <Button x:Name="RemoveTemplateBtn" Content="移除选中模板" />
             </StackPanel>
 
             <TextBlock Text="作息规则" FontSize="14" FontWeight="Bold" />
             <StackPanel Spacing="6">
                 <ComboBox x:Name="RuleTemplateCombo" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <DatePicker x:Name="RuleDatePicker" />
-                    <Button x:Name="AddDateRuleBtn" Content="添加指定日期规则" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <ComboBox x:Name="RuleDayOfWeekCombo" SelectedIndex="0">
+                <WrapPanel>
+                    <DatePicker x:Name="RuleDatePicker" Margin="0,0,8,8" />
+                    <Button x:Name="AddDateRuleBtn" Content="添加指定日期规则" Margin="0,0,0,8" />
+                </WrapPanel>
+                <WrapPanel>
+                    <ComboBox x:Name="RuleDayOfWeekCombo" SelectedIndex="0" Margin="0,0,8,8">
                         <ComboBoxItem Content="星期一" />
                         <ComboBoxItem Content="星期二" />
                         <ComboBoxItem Content="星期三" />
@@ -84,9 +108,12 @@
                         <ComboBoxItem Content="星期六" />
                         <ComboBoxItem Content="星期日" />
                     </ComboBox>
-                    <Button x:Name="AddWeekdayRuleBtn" Content="添加星期规则" />
-                </StackPanel>
-                <ListBox x:Name="ScheduleRuleListBox" MinHeight="70" />
+                    <Button x:Name="AddWeekdayRuleBtn" Content="添加星期规则" Margin="0,0,0,8" />
+                </WrapPanel>
+                <ListBox x:Name="ScheduleRuleListBox"
+                         MinHeight="70"
+                         ItemTemplate="{StaticResource WrappingDisplayItemTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                 <Button x:Name="RemoveRuleBtn" Content="移除选中规则" />
             </StackPanel>
 
@@ -96,19 +123,29 @@
             <TextBlock Text="手动排除时间段" FontSize="16" FontWeight="Bold" />
             <StackPanel Spacing="6">
                 <TextBox x:Name="ManualExclusionNameInput" Watermark="说明，例如：下午活动不上课" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <DatePicker x:Name="ManualExclusionDatePicker" />
-                    <TextBlock Text="开始" VerticalAlignment="Center" />
-                    <TimePicker x:Name="ManualExclusionStartPicker" ClockIdentifier="24HourClock" />
-                    <TextBlock Text="结束" VerticalAlignment="Center" />
-                    <TimePicker x:Name="ManualExclusionEndPicker" ClockIdentifier="24HourClock" />
-                    <Button x:Name="AddManualExclusionBtn" Content="添加排除" />
-                </StackPanel>
-                <ListBox x:Name="ManualExclusionListBox" MinHeight="70" />
+                <WrapPanel>
+                    <DatePicker x:Name="ManualExclusionDatePicker" Margin="0,0,8,8" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="开始" VerticalAlignment="Center" />
+                        <TimePicker x:Name="ManualExclusionStartPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="结束" VerticalAlignment="Center" />
+                        <TimePicker x:Name="ManualExclusionEndPicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <Button x:Name="AddManualExclusionBtn" Content="添加排除" Margin="0,0,0,8" />
+                </WrapPanel>
+                <ListBox x:Name="ManualExclusionListBox"
+                         MinHeight="70"
+                         ItemTemplate="{StaticResource WrappingDisplayItemTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                 <Button x:Name="RemoveManualExclusionBtn" Content="移除选中排除" />
             </StackPanel>
             <CheckBox x:Name="ExcludeWeekendsCheck" Content="自动排除周末" IsChecked="True" />
-            <CheckBox x:Name="NetworkHolidayCheck" Content="联网更新节假日（可即时切换，本地数据兜底）" IsChecked="False" />
+            <CheckBox x:Name="NetworkHolidayCheck" IsChecked="False">
+                <TextBlock Text="联网更新节假日（可即时切换，本地数据兜底）"
+                           TextWrapping="Wrap" />
+            </CheckBox>
             <TextBlock x:Name="HolidayDataStatusText"
                        FontSize="12"
                        Opacity="0.8"
@@ -124,14 +161,25 @@
             <!-- 假期管理 -->
             <TextBlock Text="🏖️ 假期管理" FontSize="16" FontWeight="Bold" />
             <StackPanel Spacing="4">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="HolidayNameInput" Watermark="假期名称" Width="150" />
-                    <DatePicker x:Name="HolidayStartPicker" />
-                    <TextBlock Text="~" VerticalAlignment="Center" />
-                    <DatePicker x:Name="HolidayEndPicker" />
-                    <Button x:Name="AddHolidayBtn" Content="添加" />
-                </StackPanel>
-                <ListBox x:Name="HolidayListBox" MinHeight="100" />
+                <WrapPanel>
+                    <TextBox x:Name="HolidayNameInput"
+                             Watermark="假期名称"
+                             Width="150"
+                             Margin="0,0,8,8" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="开始" VerticalAlignment="Center" />
+                        <DatePicker x:Name="HolidayStartPicker" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,8">
+                        <TextBlock Text="结束" VerticalAlignment="Center" />
+                        <DatePicker x:Name="HolidayEndPicker" />
+                    </StackPanel>
+                    <Button x:Name="AddHolidayBtn" Content="添加" Margin="0,0,0,8" />
+                </WrapPanel>
+                <ListBox x:Name="HolidayListBox"
+                         MinHeight="100"
+                         ItemTemplate="{StaticResource WrappingDisplayItemTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                 <Button x:Name="RemoveHolidayBtn" Content="移除选中" />
             </StackPanel>
 
@@ -140,12 +188,18 @@
             <!-- 调休补班 -->
             <TextBlock Text="📝 调休补班" FontSize="16" FontWeight="Bold" />
             <StackPanel Spacing="4">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="WorkdayNameInput" Watermark="补班说明" Width="150" />
-                    <DatePicker x:Name="WorkdayDatePicker" />
-                    <Button x:Name="AddWorkdayBtn" Content="添加补班日" />
-                </StackPanel>
-                <ListBox x:Name="WorkdayListBox" MinHeight="60" />
+                <WrapPanel>
+                    <TextBox x:Name="WorkdayNameInput"
+                             Watermark="补班说明"
+                             Width="150"
+                             Margin="0,0,8,8" />
+                    <DatePicker x:Name="WorkdayDatePicker" Margin="0,0,8,8" />
+                    <Button x:Name="AddWorkdayBtn" Content="添加补班日" Margin="0,0,0,8" />
+                </WrapPanel>
+                <ListBox x:Name="WorkdayListBox"
+                         MinHeight="60"
+                         ItemTemplate="{StaticResource WrappingDisplayItemTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                 <Button x:Name="RemoveWorkdayBtn" Content="移除选中" />
             </StackPanel>
 
