@@ -29,12 +29,12 @@
       },
       "System.Text.Json": {
         "type": "Direct",
-        "requested": "[9.0.2, )",
-        "resolved": "9.0.2",
-        "contentHash": "4TY2Yokh5Xp8XHFhsY9y84yokS7B0rhkaZCXuRiKppIiKwPVH4lVSFD9EEFzRpXdBM5ZeZXD43tc2vB6njEwwQ==",
+        "requested": "[9.0.18, )",
+        "resolved": "9.0.18",
+        "contentHash": "/xX8vajlGUp1FoGSNUJBJS+E/2TQjmcMoUzHePa+coPdLnFGPcolRHlybSZhKyAKj+sNDSFlLNYYLe8aEOElfA==",
         "dependencies": {
-          "System.IO.Pipelines": "9.0.2",
-          "System.Text.Encodings.Web": "9.0.2"
+          "System.IO.Pipelines": "9.0.18",
+          "System.Text.Encodings.Web": "9.0.18"
         }
       },
       "xunit": {
@@ -963,8 +963,8 @@
       },
       "System.IO.Pipelines": {
         "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "UIBaK7c/A3FyQxmX/747xw4rCUkm1BhNiVU617U5jweNJssNjLJkPUGhBsrlDG0BpKWCYKsncD+Kqpy4KmvZZQ=="
+        "resolved": "9.0.18",
+        "contentHash": "9AcBFLF9KZpCiv+xTN8emSsiF1FEq/DdswZrJgqlf37dKThJSXwCQ1QUfH24+k9X89C80CI0IQCZatdg0yj3Jw=="
       },
       "System.Memory": {
         "type": "Transitive",
@@ -1056,8 +1056,8 @@
       },
       "System.Text.Encodings.Web": {
         "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "/kCGdrXg0PXrvkHYyHubXJHcmCAvJrxTZ7g4XS6UCxY1JW79aMjtUW6UYNECHJmiyFZsZ/vUuWOM4CtNpiNt8Q=="
+        "resolved": "9.0.18",
+        "contentHash": "Uqybp2r2zFvSDKckcr30TbXRrjW16ihRFzdHVC8Jo8DwkRDJfBuPkXS7hqcUwRYE3ItHKeyfcbq/SpExNPuE2Q=="
       },
       "System.Threading": {
         "type": "Transitive",
@@ -1147,7 +1147,8 @@
       "classisland.schoolstats": {
         "type": "Project",
         "dependencies": {
-          "ClassIsland.PluginSdk": "[2.1.0.1, )"
+          "ClassIsland.PluginSdk": "[2.1.0.1, )",
+          "System.Text.Json": "[9.0.18, )"
         }
       }
     }
